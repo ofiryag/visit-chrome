@@ -1,8 +1,8 @@
 {
     "manifest_version": 3,
-    "name": "Website Tracker Extension",
+    "name": "Visit Extension",
     "version": "1.0",
-    "description": "Tracks the websites visited by the user and sends data to the backend",
+    "description": "Check the LLM websites visited by the user and sends url and time to a backend service",
     "permissions": [
       "activeTab",
       "storage",
