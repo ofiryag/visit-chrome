@@ -19,7 +19,7 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
     const visitDetails = {url, time};
     visits.push(visitDetails);
 
-    visitCountMap[time] = {...visitDetails, retryAttempts:1}
+    visitCountMap[`${time}_${url}`] = {...visitDetails, retryAttempts:1}
     
     // Send data if the limit is reached
     if (visits.length >= visitLimit) {
@@ -36,26 +36,26 @@ const handleBulkVisitResponse = async (response) => {
         failedVisits = []; 
         const {successes, failures} = await response.json();
         failures?.forEach(visit => {
-            const timeKey = new Date(visit.time).toUTCString()
-            const retryAttempts = visitCountMap[timeKey]?.retryAttempts;
+            const visitKey = `${new Date(visit.time).toUTCString()}_${visit.url}`
+            const retryAttempts = visitCountMap[visitKey]?.retryAttempts;
     
-            if (retryAttempts > maxRetryAttemps && visitCountMap[timeKey]) {
+            if (retryAttempts > maxRetryAttemps && visitCountMap[visitKey]) {
                 // Max retries reached, remove from visitCountMap
-                delete visitCountMap[timeKey];
+                delete visitCountMap[visitKey];
             } else {
                 // Safely increment retryAttempts
-                if (visitCountMap[timeKey]) {
-                    visitCountMap[timeKey].retryAttempts++;
+                if (visitCountMap[visitKey]) {
+                    visitCountMap[visitKey].retryAttempts++;
                 } else {
-                    visitCountMap[timeKey] = {...visit, retryAttempts:1}
+                    visitCountMap[visitKey] = {...visit, retryAttempts:1}
                 }
                 failedVisits.push(visit);
             }
         });
 
         successes?.forEach(visit => {
-            const timeKey = new Date(visit.time).toUTCString()
-            delete visitCountMap[timeKey]; // if succeeded - removes from map
+            const visitKey = `${new Date(visit.time).toUTCString()}_${visit.url}`
+            delete visitCountMap[visitKey]; // if succeeded - removes from map
         });
 
         visits = failedVisits;
