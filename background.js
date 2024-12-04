@@ -6,7 +6,7 @@ const visitServiceBaseUrl = "http://localhost:3000";
 
 let visits = [];  // visited urls
 let visitLimit = 10;  // Send after 10 visits or 1 minute
-let intervalTime = 35 * 1000;  // 1 minute in milliseconds
+let intervalTime = 60 * 1000;  // 1 minute in milliseconds
 let maxRetryAttemps = 3; // max retry attempts
 let visitCountMap = {}
 
