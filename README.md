@@ -2,8 +2,10 @@
 
 ## Overview
 The Visit-Chrome Extension 
-is responsible for trackking the URLs that users visit while browsing, check using a whitelist whether they are suspicous of being LLMs and send them to visit-service.
-It is built using Manifest V3 for Chrome extensions
+is responsible for tracking the URLs that users visit while browsing, check using a whitelist whether they are suspicous of being LLMs and send them to visit-service.
+the visted urls are sent in batches to the backend service untill either 10 visits were collected or 1 minute has been passed since the first visit of that batch.
+
+The extension is built using Manifest V3 for Chrome extensions
 
 ## Installation
 1. Clone this repository.
