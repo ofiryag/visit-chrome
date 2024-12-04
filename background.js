@@ -10,17 +10,18 @@ let intervalTime = 60 * 1000;  // 1 minute in milliseconds
 let maxRetryAttemps = 3; // max retry attempts
 let visitCountMap = {}
 
-// Function to accumulate visit data
-chrome.tabs.onActivated.addListener(async (activeInfo) => {
-    const tab = await chrome.tabs.get(activeInfo.tabId);
+// Only trigger if the URL is set or changed
+chrome.tabs.onUpdated.addListener(async (changeInfo, tab) => {
+    if (!tab.url) return; 
     const url = tab.url;
     if (!shouldSendVisit(url)) return;
-    const time = new Date().toUTCString();
-    const visitDetails = {url, time};
-    visits.push(visitDetails);
 
-    visitCountMap[`${time}_${url}`] = {...visitDetails, retryAttempts:1}
-    
+    const time = new Date().toUTCString();
+    const visitDetails = { url, time };
+    visits.push(visitDetails);
+    const visitKey = time;
+    visitCountMap[visitKey] = { ...visitDetails, retryAttempts: 1 };
+
     // Send data if the limit is reached
     if (visits.length >= visitLimit) {
         const response = await sendBulkVisitedLLMs(visits);
@@ -36,7 +37,7 @@ const handleBulkVisitResponse = async (response) => {
         failedVisits = []; 
         const {successes, failures} = await response.json();
         failures?.forEach(visit => {
-            const visitKey = `${new Date(visit.time).toUTCString()}_${visit.url}`
+            const visitKey = visit.time;
             const retryAttempts = visitCountMap[visitKey]?.retryAttempts;
     
             if (retryAttempts > maxRetryAttemps && visitCountMap[visitKey]) {
@@ -54,7 +55,7 @@ const handleBulkVisitResponse = async (response) => {
         });
 
         successes?.forEach(visit => {
-            const visitKey = `${new Date(visit.time).toUTCString()}_${visit.url}`
+            const visitKey = visit.time;
             delete visitCountMap[visitKey]; // if succeeded - removes from map
         });
 
