@@ -62,6 +62,6 @@ async function sendVisitedLLMs(visits) {
 /**
 * In order to reduce redundant http requests, the visit should be sent only in case it is include one of the items in the whitelist.
 * @param {number} url The visited url.
-* @return {boolean} The result of adding num1 and num2.
+* @return {boolean} true - if should send the visit, otherwise false
 */
 const shouldSendVisit = (url) => LLM_WHITELIST.some(llm => url.toLowerCase().includes(llm.toLowerCase()));
