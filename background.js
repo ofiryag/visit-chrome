@@ -6,36 +6,68 @@ const visitServiceBaseUrl = "http://localhost:3000";
 
 let visits = [];  // visited urls
 let visitLimit = 10;  // Send after 10 visits or 1 minute
-let intervalTime = 60 * 1000;  // 1 minute in milliseconds
+let intervalTime = 35 * 1000;  // 1 minute in milliseconds
+let maxRetryAttemps = 3; // max retry attempts
+let visitCountMap = {}
 
 // Function to accumulate visit data
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
     const tab = await chrome.tabs.get(activeInfo.tabId);
     const url = tab.url;
     if (!shouldSendVisit(url)) return;
-
-    const visitDetails = {
-        url: url,
-        time: new Date().toUTCString()
-    };
-
+    const time = new Date().toUTCString();
+    const visitDetails = {url, time};
     visits.push(visitDetails);
 
+    visitCountMap[time] = {...visitDetails, retryAttempts:1}
+    
     // Send data if the limit is reached
     if (visits.length >= visitLimit) {
-        sendVisitedLLMs(visits);
-        visits = [];  // Reset visits array after sending
+        const response = await sendBulkVisitedLLMs(visits);
+        await handleBulkVisitResponse(response);
     }
 });
+
+
+/**
+* Handles successes and failures visits, in case of failure retrying until max retry attempts exceeded
+*/
+const handleBulkVisitResponse = async (response) => {
+        failedVisits = []; 
+        const {successes, failures} = await response.json();
+        failures?.forEach(visit => {
+            const timeKey = new Date(visit.time).toUTCString()
+            const retryAttempts = visitCountMap[timeKey]?.retryAttempts;
+    
+            if (retryAttempts > maxRetryAttemps && visitCountMap[timeKey]) {
+                // Max retries reached, remove from visitCountMap
+                delete visitCountMap[timeKey];
+            } else {
+                // Safely increment retryAttempts
+                if (visitCountMap[timeKey]) {
+                    visitCountMap[timeKey].retryAttempts++;
+                } else {
+                    visitCountMap[timeKey] = {...visit, retryAttempts:1}
+                }
+                failedVisits.push(visit);
+            }
+        });
+
+        successes?.forEach(visit => {
+            const timeKey = new Date(visit.time).toUTCString()
+            delete visitCountMap[timeKey]; // if succeeded - removes from map
+        });
+
+        visits = failedVisits;
+}
 
 /**
 * When the extension is loaded the setInterval function is executed starting the periodic process that triggers sendVisitedLLMs every intervalTime
 */
-setInterval(() => {
+setInterval(async () => {
     if (visits.length > 0) {
-        const reponse = sendVisitedLLMs(visits);
-        if(reponse.ok) // if it's not ok - we will try again to send those visits when a new interval will be executed
-            visits = [];  // Flush the array
+        const response = await sendBulkVisitedLLMs(visits);
+        await handleBulkVisitResponse(response);
     }
 }, intervalTime);
 
@@ -43,7 +75,7 @@ setInterval(() => {
 * Sends the visited LLM urls to visit-service 
 * @param visits The visited urls.
 */
-async function sendVisitedLLMs(visits) {
+async function sendBulkVisitedLLMs(visits) {
     const response = await fetch(`${visitServiceBaseUrl}/api/v1/visit`, {
         method: 'POST',
         headers: {
